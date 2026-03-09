@@ -1,4 +1,4 @@
-# BGP_path_hijack
+# BGP_path_hijack_Shrd
 This repo is different from the `https://bitbucket.org/jvimal/bgp/src`, it is an upgradable version for `Mininet 2.3.0`, check it out!
 ## Envs
 - python3
