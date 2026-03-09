@@ -10,3 +10,11 @@ PID1=$!
 sudo python3 run.py --node S4 --cmd "sudo /usr/sbin/bgpd -f conf/bgpd-S4.conf -d -i /tmp/bgpd-S4.pid > logs/S4-bgpd-stdout 2>&1" &
 PID2=$!
 wait $PID1 $PID2
+
+# Verify startup
+sleep 1
+if pgrep -f "bgpd-S4" > /dev/null; then
+    echo "Rogue AS started successfully."
+else
+    echo "Error: Rogue AS failed to start. Check logs/S4-bgpd-stdout."
+fi

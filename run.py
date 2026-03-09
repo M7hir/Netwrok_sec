@@ -54,7 +54,7 @@ def main():
         sys.exit(1)
 
     cmd = ' '.join(FLAGS.cmd)
-    print("Executed cmd: mnexec -a %s %s"%(pid.decode('utf-8'), cmd))
+    sys.stderr.write("Executed cmd: mnexec -a %s %s\n"%(pid.decode('utf-8'), cmd))
     os.system("mnexec -a %s %s" % (pid.decode('utf-8'), cmd))
 
 
