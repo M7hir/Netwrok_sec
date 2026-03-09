@@ -152,12 +152,12 @@ def main():
         log("Starting zebra and bgpd on %s" % router.name)
     
     # Wait for daemons to initialize instead of sequential waits
-    sleep(2)
+    sleep(10)
 
     for host in net.hosts:
-    #    host.cmd("ifconfig %s-eth0 %s" % (host.name, getIP(host.name)))
+        host.cmd("ifconfig %s-eth0 %s" % (host.name, getIP(host.name)))
         log("Config host %s-eth0 %s, gateway: %s"%(host.name, getIP(host.name), getGateway(host.name)))
-    #    host.cmd("route add default gw %s" % (getGateway(host.name)))
+        host.cmd("route add default gw %s" % (getGateway(host.name)))
 
     log("Starting web servers", 'yellow')
     startWebserver(net, 'h3-1', "Default web server")
