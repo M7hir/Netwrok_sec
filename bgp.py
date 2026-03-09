@@ -159,38 +159,23 @@ def main():
         log("Config host %s-eth0 %s, gateway: %s"%(host.name, getIP(host.name), getGateway(host.name)))
         host.cmd("route add default gw %s" % (getGateway(host.name)))
 
-    # Install BGP learned routes into kernel (workaround for zebra-bgpd communication)
-    log("Installing learned BGP routes into kernel routing tables", 'yellow')
-    sleep(2)  # Give BGP time to learn routes before extracting them
+    # Add basic static routes for inter-AS connectivity
+    # These will be the baseline - when attack happens, more specific routes will override
+    log("Adding baseline static routes for inter-AS connectivity", 'yellow')
+    S1 = net.getNodeByName('S1')
+    S2 = net.getNodeByName('S2')
+    S3 = net.getNodeByName('S3')
     
-    for router_name in ['S1', 'S2', 'S3']:
-        import subprocess
-        try:
-            # Get all BGP routes from this router
-            result = subprocess.Popen(
-                ["sudo", "python3", "run.py", "--node", router_name, 
-                 "--cmd", "vtysh -c 'show ip bgp' 2>/dev/null"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            stdout, stderr = result.communicate(timeout=5)
-            
-            # Parse output and install routes
-            for line in stdout.decode('utf-8').split('\n'):
-                # Match lines with routes (format: *> prefix nexthop ...)
-                import re
-                match = re.match(r'\s*\*?\s*>?\s+(\S+/\d+)\s+(\S+)\s+', line)
-                if match:
-                    prefix = match.group(1)
-                    nexthop = match.group(2)
-                    # Skip if it's a directly connected network
-                    if '0 i' in line or prefix.startswith('9.0'):
-                        continue
-                    router = net.getNodeByName(router_name)
-                    router.cmd("ip route add %s via %s 2>/dev/null || ip route replace %s via %s" % (prefix, nexthop, prefix, nexthop))
-                    log(f"  {router_name}: {prefix} via {nexthop}", 'yellow')
-        except Exception as e:
-            log(f"Error installing routes on {router_name}: {e}", 'red')
+    S1.cmd("ip route add 12.0.0.0/8 via 9.0.0.2")
+    S1.cmd("ip route add 13.0.0.0/8 via 9.0.0.2")
+    
+    S2.cmd("ip route add 11.0.0.0/8 via 9.0.0.1")
+    S2.cmd("ip route add 13.0.0.0/8 via 9.0.1.2")
+    
+    S3.cmd("ip route add 11.0.0.0/8 via 9.0.1.1")
+    S3.cmd("ip route add 12.0.0.0/8 via 9.0.1.1")
+    
+    log("Routes configured. Network should be operational.", 'yellow')
 
 
 
