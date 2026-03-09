@@ -159,23 +159,31 @@ def main():
         log("Config host %s-eth0 %s, gateway: %s"%(host.name, getIP(host.name), getGateway(host.name)))
         host.cmd("route add default gw %s" % (getGateway(host.name)))
 
-    # Add basic static routes for inter-AS connectivity
-    # These will be the baseline - when attack happens, more specific routes will override
-    log("Adding baseline static routes for inter-AS connectivity", 'yellow')
+    # Add static routes for inter-AS connectivity (bypasses zebra-bgpd communication issue)
+    log("Adding static routes for inter-AS connectivity", 'yellow')
     S1 = net.getNodeByName('S1')
     S2 = net.getNodeByName('S2')
     S3 = net.getNodeByName('S3')
+    S4 = net.getNodeByName('S4')
     
+    # S1 routes: to S2 and S3 networks
     S1.cmd("ip route add 12.0.0.0/8 via 9.0.0.2")
     S1.cmd("ip route add 13.0.0.0/8 via 9.0.0.2")
     
+    # S2 routes: to S1 and S3 networks
     S2.cmd("ip route add 11.0.0.0/8 via 9.0.0.1")
     S2.cmd("ip route add 13.0.0.0/8 via 9.0.1.2")
     
+    # S3 routes: to S1 and S2 networks
     S3.cmd("ip route add 11.0.0.0/8 via 9.0.1.1")
     S3.cmd("ip route add 12.0.0.0/8 via 9.0.1.1")
     
-    log("Routes configured. Network should be operational.", 'yellow')
+    # S4 routes: to S1, S2, S3 networks (for attacker to reach everyone)
+    S4.cmd("ip route add 11.0.0.0/8 via 9.0.4.1")
+    S4.cmd("ip route add 12.0.0.0/8 via 9.0.4.1")
+    S4.cmd("ip route add 13.0.0.0/8 via 9.0.4.1")
+    
+    log("All static routes configured. Network ready.", 'yellow')
 
 
 
