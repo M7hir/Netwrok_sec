@@ -28,7 +28,9 @@ FLAGS_rogue_as = args.rogue
 ROGUE_AS_NAME = 'S4'
 
 def log(s, col="green"):
-    print T.colored(s, col)
+    # Up to python3
+    # print T.colored(s, col)
+    print(T.colored(s,col))
 
 
 class Router(Switch):
@@ -54,7 +56,8 @@ class Router(Switch):
         self.deleteIntfs()
 
     def log(self, s, col="magenta"):
-        print T.colored(s, col)
+        print(T.colored(s, col))
+        #print T.colored(s, col)
 
 
 class SimpleTopo(Topo):
@@ -69,26 +72,28 @@ class SimpleTopo(Topo):
         num_ases = 3
         num_hosts = num_hosts_per_as * num_ases
         # The topology has one router per AS
-	routers = []
-        for i in xrange(num_ases):
-            router = self.addSwitch('R%d' % (i+1))
-	    routers.append(router)
+        routers = []
+        for i in range(num_ases):
+            router = self.addSwitch('S%d' % (i+1))
+            routers.append(router)
         hosts = []
-        for i in xrange(num_ases):
-            router = 'R%d' % (i+1)
-            for j in xrange(num_hosts_per_as):
+        for i in range(num_ases):
+            router = 'S%d' % (i+1)
+            for j in range(num_hosts_per_as):
                 hostname = 'h%d-%d' % (i+1, j+1)
-                host = self.addNode(hostname)
+                host = self.addHost(hostname, ip = "1%d.0.%d.1/24"%(i+1, j+1), defaultRoute = "via 1%d.0.%d.254"%(i+1, j+1))
                 hosts.append(host)
                 self.addLink(router, host)
+        # Add links between in ASes!
+        for i in range(num_ases-1):
+            self.addLink('S%d'%(i+1), 'S%d'%(i+2))
 
-        for i in xrange(num_ases-1):
-            self.addLink('R%d' % (i+1), 'R%d' % (i+2))
-
+        # Lastly, added AS4!
         routers.append(self.addSwitch('S4'))
-        for j in xrange(num_hosts_per_as):
+        for j in range(num_hosts_per_as):
             hostname = 'h%d-%d' % (4, j+1)
-            host = self.addNode(hostname)
+            # Use a non-conflicting IP for the attacker's host. The hijack is done by BGP, not IP spoofing here.
+            host = self.addHost(hostname, ip = "14.0.%d.1/24"%(j+1), defaultRoute = "via 14.0.%d.254"%(j+1))
             hosts.append(host)
             self.addLink('S4', hostname)
         # This MUST be added at the end
@@ -118,11 +123,11 @@ def getGateway(hostname):
 
 def startWebserver(net, hostname, text="Default web server"):
     host = net.getNodeByName(hostname)
-    return host.popen("python webserver.py --text '%s'" % text, shell=True)
+    return host.popen("sudo python3 webserver.py --text '%s'" % text, shell=True)
 
 
 def main():
-    os.system("rm -f /tmp/R*.log /tmp/R*.pid logs/*")
+    os.system("rm -f /tmp/S*.log /tmp/S*.pid logs/*")
     os.system("mn -c >/dev/null 2>&1")
     os.system("killall -9 zebra bgpd > /dev/null 2>&1")
     os.system('pgrep -f webserver.py | xargs kill -9')
@@ -130,24 +135,28 @@ def main():
     net = Mininet(topo=SimpleTopo(), switch=Router)
     net.start()
     for router in net.switches:
-        router.cmd("sysctl -w net.ipv4.ip_forward=1")
+        router.cmd("sudo sysctl -w net.ipv4.ip_forward=1")
         router.waitOutput()
 
     log("Waiting %d seconds for sysctl changes to take effect..."
         % args.sleep)
     sleep(args.sleep)
 
+    # Start daemons on all routers in parallel for faster initialization
     for router in net.switches:
         if router.name == ROGUE_AS_NAME and not FLAGS_rogue_as:
             continue
-        router.cmd("/usr/lib/quagga/zebra -f conf/zebra-%s.conf -d -i /tmp/zebra-%s.pid > logs/%s-zebra-stdout 2>&1" % (router.name, router.name, router.name))
-        router.waitOutput()
-        router.cmd("/usr/lib/quagga/bgpd -f conf/bgpd-%s.conf -d -i /tmp/bgp-%s.pid > logs/%s-bgpd-stdout 2>&1" % (router.name, router.name, router.name), shell=True)
-        router.waitOutput()
+        router.popen("sudo /usr/sbin/zebra -f conf/zebra-%s.conf -d -i /tmp/zebra-%s.pid > logs/%s-zebra-stdout 2>&1" % (router.name, router.name, router.name))
+        router.popen("sudo /usr/sbin/bgpd -f conf/bgpd-%s.conf -d -i /tmp/bgp-%s.pid > logs/%s-bgpd-stdout 2>&1" % (router.name, router.name, router.name), shell=True)
+        router.popen("ifconfig lo up")
         log("Starting zebra and bgpd on %s" % router.name)
+    
+    # Wait for daemons to initialize instead of sequential waits
+    sleep(10)
 
     for host in net.hosts:
         host.cmd("ifconfig %s-eth0 %s" % (host.name, getIP(host.name)))
+        log("Config host %s-eth0 %s, gateway: %s"%(host.name, getIP(host.name), getGateway(host.name)))
         host.cmd("route add default gw %s" % (getGateway(host.name)))
 
     log("Starting web servers", 'yellow')
