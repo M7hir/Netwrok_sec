@@ -12,12 +12,12 @@ import time
 def get_node(name):
     """Get a node from mininet"""
     try:
-        result = subprocess.run(
+        result = subprocess.Popen(
             ["sudo", "python3", "run.py", "--node", name, "--cmd", "ip route show"],
-            capture_output=True,
-            text=True,
-            timeout=5
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
         )
+        stdout, stderr = result.communicate(timeout=5)
         return result.returncode == 0
     except:
         return False
@@ -25,16 +25,16 @@ def get_node(name):
 def get_bgp_routes(node):
     """Get routes learned by BGP on a node"""
     try:
-        result = subprocess.run(
+        result = subprocess.Popen(
             ["sudo", "python3", "run.py", "--node", node, "--cmd", 
              "vtysh -c 'show ip bgp' 2>/dev/null"],
-            capture_output=True,
-            text=True,
-            timeout=5
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
         )
+        stdout, stderr = result.communicate(timeout=5)
         
         routes = []
-        for line in result.stdout.split('\n'):
+        for line in stdout.decode('utf-8').split('\n'):
             # Match lines like:
             # *> 12.0.0.0/8      9.0.0.2                         0 2 i
             # *> 13.0.0.0/8      9.0.4.2                         0 4 i
@@ -53,13 +53,12 @@ def get_bgp_routes(node):
 def install_route(node, prefix, nexthop):
     """Install a route in a node's kernel routing table"""
     try:
-        subprocess.run(
+        subprocess.Popen(
             ["sudo", "python3", "run.py", "--node", node, "--cmd",
              f"ip route add {prefix} via {nexthop} 2>/dev/null || ip route replace {prefix} via {nexthop}"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        ).communicate(timeout=5)
         return True
     except:
         return False
@@ -109,13 +108,13 @@ def main():
         
         if installed > 0:
             print(f"\nVerifying routes on {node}...")
-            result = subprocess.run(
+            result = subprocess.Popen(
                 ["sudo", "python3", "run.py", "--node", node, "--cmd", "ip route show"],
-                capture_output=True,
-                text=True,
-                timeout=5
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
             )
-            for line in result.stdout.split('\n'):
+            stdout, stderr = result.communicate(timeout=5)
+            for line in stdout.decode('utf-8').split('\n'):
                 if line.strip():
                     print(f"  {line}")
 

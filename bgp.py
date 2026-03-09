@@ -167,16 +167,16 @@ def main():
         import subprocess
         try:
             # Get all BGP routes from this router
-            result = subprocess.run(
+            result = subprocess.Popen(
                 ["sudo", "python3", "run.py", "--node", router_name, 
                  "--cmd", "vtysh -c 'show ip bgp' 2>/dev/null"],
-                capture_output=True,
-                text=True,
-                timeout=5
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
             )
+            stdout, stderr = result.communicate(timeout=5)
             
             # Parse output and install routes
-            for line in result.stdout.split('\n'):
+            for line in stdout.decode('utf-8').split('\n'):
                 # Match lines with routes (format: *> prefix nexthop ...)
                 import re
                 match = re.match(r'\s*\*?\s*>?\s+(\S+/\d+)\s+(\S+)\s+', line)
