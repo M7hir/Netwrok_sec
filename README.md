@@ -1,12 +1,10 @@
-# BGP_path_hijack
-This repo is different from the `https://bitbucket.org/jvimal/bgp/src`, it is an upgradable version for `Mininet 2.3.0`, check it out!
 ## Envs
 - python3
 - mininet 2.3.0
 ## Steps
 You should modify the bgp.py in line `147` and `149`, replace the zebra and bgpd's paths to your own!
 ```
-mininet@mininet-vm:$ git https://github.com/spwpun/BGP_Path_Hijack.git
+mininet@mininet-vm:$ git https://github.com/M7hir/Netwrok_sec.git
 mininet@mininet-vm:$ cd BGP_Path_Hijack/
 # replace paths in bgp.py
 mininet@mininet-vm:$ sudo python3 bgp.py

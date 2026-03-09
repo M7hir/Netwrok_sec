@@ -16,24 +16,23 @@ parser.add_argument('--cmd', default='ifconfig',
                     help="Command to run inside node.")
 
 FLAGS = parser.parse_args()
-node_pat = re.compile(r'.*bash --norc --noediting -is mininet:(.*)')
+node_pat = re.compile(r'.*bash ... mininet:(.*)')
 
 
 def list_nodes(do_print=False):
     cmd = 'ps aux'
     proc = Popen(cmd.split(), stdout=PIPE)
     out, err = proc.communicate()
-    # print(out)
     # Mapping from name to pid.
     ret = {}
-    for line in out.split(b'\n'):
-        match = node_pat.match(line.decode('utf-8'))
+    for line in out.split('\n'):
+        match = node_pat.match(line)
         if not match:
             continue
         name = match.group(1)
         pid = line.split()[1]
         if do_print:
-            print("name: %6s, pid: %6s" % (name, pid))
+            print "name: %6s, pid: %6s" % (name, pid)
         ret[name] = pid
     return ret
 
@@ -50,14 +49,12 @@ def main():
     pid_by_name = list_nodes()
     pid = pid_by_name.get(FLAGS.node)
     if pid is None:
-        print("node '%s' not found" % (FLAGS.node))
+        print "node `%s' not found" % (FLAGS.node)
         sys.exit(1)
 
     cmd = ' '.join(FLAGS.cmd)
-    sys.stderr.write("Executed cmd: mnexec -a %s %s\n"%(pid.decode('utf-8'), cmd))
-    os.system("mnexec -a %s %s" % (pid.decode('utf-8'), cmd))
+    os.system("mnexec -a %s %s" % (pid, cmd))
 
 
 if __name__ == '__main__':
     main()
-    #list_nodes()
