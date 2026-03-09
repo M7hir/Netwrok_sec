@@ -159,28 +159,7 @@ def main():
         log("Config host %s-eth0 %s, gateway: %s"%(host.name, getIP(host.name), getGateway(host.name)))
         host.cmd("route add default gw %s" % (getGateway(host.name)))
 
-    # Add static routes to enable inter-AS communication (workaround for Quagga socket issue)
-    log("Adding static routes for inter-AS connectivity", 'yellow')
-    S1 = net.getNodeByName('S1')
-    S2 = net.getNodeByName('S2')
-    S3 = net.getNodeByName('S3')
-    S4 = net.getNodeByName('S4')
-    
-    # S1 routes
-    S1.cmd("ip route add 12.0.0.0/8 via 9.0.0.2")
-    S1.cmd("ip route add 13.0.0.0/8 via 9.0.0.2")
-    
-    # S2 routes
-    S2.cmd("ip route add 11.0.0.0/8 via 9.0.0.1")
-    S2.cmd("ip route add 13.0.0.0/8 via 9.0.1.2")
-    
-    # S3 routes
-    S3.cmd("ip route add 11.0.0.0/8 via 9.0.1.1")
-    S3.cmd("ip route add 12.0.0.0/8 via 9.0.1.1")
-    
-    # S4 (rogue) routes
-    S4.cmd("ip route add 11.0.0.0/8 via 9.0.4.1")
-    S4.cmd("ip route add 12.0.0.0/8 via 9.0.4.1")
+
 
     log("Starting web servers", 'yellow')
     startWebserver(net, 'h3-1', "Default web server")
