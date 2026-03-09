@@ -92,7 +92,8 @@ class SimpleTopo(Topo):
         routers.append(self.addSwitch('S4'))
         for j in range(num_hosts_per_as):
             hostname = 'h%d-%d' % (4, j+1)
-            host = self.addHost(hostname, ip = "13.0.%d.1/24"%(j+1), defaultRoute = "via 13.0.%d.254"%(j+1))
+            # Use a non-conflicting IP for the attacker's host. The hijack is done by BGP, not IP spoofing here.
+            host = self.addHost(hostname, ip = "14.0.%d.1/24"%(j+1), defaultRoute = "via 14.0.%d.254"%(j+1))
             hosts.append(host)
             self.addLink('S4', hostname)
         # This MUST be added at the end

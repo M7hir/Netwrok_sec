@@ -11,6 +11,11 @@ sudo python3 run.py --node S4 --cmd "sudo /usr/sbin/bgpd -f conf/bgpd-S4.conf -d
 PID2=$!
 wait $PID1 $PID2
 
+# Add a NAT rule on the rogue router to forward hijacked traffic to the attacker's webserver.
+# Hijacked traffic for 13.0.1.1 will be redirected to h4-1 (which now has IP 14.0.1.1).
+echo "Adding NAT rule on S4 to redirect traffic"
+sudo python3 run.py --node S4 --cmd "sudo iptables -t nat -A PREROUTING -d 13.0.1.1 -j DNAT --to-destination 14.0.1.1"
+
 # Verify startup
 sleep 1
 if pgrep -f "bgpd-S4" > /dev/null; then
