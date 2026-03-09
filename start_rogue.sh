@@ -7,9 +7,19 @@ echo "Starting rogue AS"
 # Run both daemons in parallel to reduce startup time
 sudo python3 run.py --node S4 --cmd "sudo /usr/sbin/zebra -f conf/zebra-S4.conf -d -i /tmp/zebra-S4.pid > logs/S4-zebra-stdout 2>&1" &
 PID1=$!
-sudo python3 run.py --node S4 --cmd "sudo /usr/sbin/bgpd -f conf/bgpd-S4.conf -d -i /tmp/bgpd-S4.pid > logs/S4-bgpd-stdout 2>&1" &
+sudo python3 run.py --node S4 --cmd "sudo /usr/sbin/bgpd -f conf/bgpd-S4.conf -d -i /tmp/bgp-S4.pid > logs/S4-bgpd-stdout 2>&1" &
 PID2=$!
 wait $PID1 $PID2
+
+echo "Rogue AS started. Removing static routes to enable BGP hijacking..."
+sleep 3
+
+# Remove static routes on S1 to allow S4's BGP routes to take effect
+sudo python3 run.py --node S1 --cmd "ip route del 13.0.0.0/8 via 9.0.0.2"
+sudo python3 run.py --node S1 --cmd "ip route del 12.0.0.0/8 via 9.0.0.2"
+
+echo "Static routes removed. BGP hijack routes now active!"
+echo "Traffic to 13.0.x.x should now go through S4 (attacker)"
 
 # Configure S4 interface to communicate with the attacker host (h4-1)
 # This is necessary because h4-1 is on 14.0.1.0/24, but zebra config might not set this up.
